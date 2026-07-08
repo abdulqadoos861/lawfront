@@ -93,7 +93,79 @@ const MOCK_NEW_LAWS = [
   { title: "The Anti-Hoarding and Price Control Ordinance, 2026",                   category: "Ordinance" as const, sourceId: 3 }
 ];
 
+const getAuthHeaders = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  const token = localStorage.getItem("pla_token");
+  return token ? { "Authorization": `Bearer ${token}` } : {};
+};
+
 export const apiClient = {
+
+  // ─── Auth ──────────────────────────────────────────────────────────────────
+
+  login: async (username: string, password: string): Promise<{ token: string; username: string }> => {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (isBrowser) {
+        localStorage.setItem("pla_token", data.token);
+        localStorage.setItem("pla_username", data.username);
+      }
+      return data;
+    }
+    const err = await res.json();
+    throw new Error(err.detail || "Authentication failed.");
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      const headers = getAuthHeaders();
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        headers
+      });
+    } catch (e) {
+      console.warn("Logout request failed", e);
+    } finally {
+      if (isBrowser) {
+        localStorage.removeItem("pla_token");
+        localStorage.removeItem("pla_username");
+      }
+    }
+  },
+
+  verifySession: async (): Promise<boolean> => {
+    try {
+      const headers = getAuthHeaders();
+      if (!headers.Authorization) return false;
+      const res = await fetch(`${API_URL}/api/auth/verify`, { headers });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`${API_URL}/api/auth/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (isBrowser) {
+        localStorage.removeItem("pla_token");
+        localStorage.removeItem("pla_username");
+      }
+      return data;
+    }
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to change password.");
+  },
 
   // ─── Sources ────────────────────────────────────────────────────────────────
 
@@ -109,7 +181,7 @@ export const apiClient = {
     try {
       const res = await fetch(`${API_URL}/api/admin/sources`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ scraper_type: "generic", is_active: true, ...payload })
       });
       if (res.ok) return await res.json();
@@ -127,7 +199,10 @@ export const apiClient = {
 
   toggleSource: async (id: number): Promise<Source> => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/sources/${id}/toggle`, { method: "POST" });
+      const res = await fetch(`${API_URL}/api/admin/sources/${id}/toggle`, {
+        method: "POST",
+        headers: getAuthHeaders()
+      });
       if (res.ok) return await res.json();
     } catch (e) { console.warn("Backend unavailable, toggling locally.", e); }
 
@@ -140,7 +215,10 @@ export const apiClient = {
 
   deleteSource: async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/sources/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/admin/sources/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
       if (res.ok) return true;
     } catch (e) { console.warn("Backend unavailable, deleting locally.", e); }
 
@@ -190,7 +268,9 @@ export const apiClient = {
 
   getAdmins: async (): Promise<Admin[]> => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/receivers`);
+      const res = await fetch(`${API_URL}/api/admin/receivers`, {
+        headers: getAuthHeaders()
+      });
       if (res.ok) return await res.json();
     } catch (e) { console.warn("Backend unavailable, using local admins.", e); }
     return getStored('pla_admins', INITIAL_ADMINS);
@@ -200,7 +280,7 @@ export const apiClient = {
     try {
       const res = await fetch(`${API_URL}/api/admin/receivers`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ email, name })
       });
       if (res.ok) return await res.json();
@@ -218,7 +298,10 @@ export const apiClient = {
 
   removeAdmin: async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/receivers/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/admin/receivers/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
       if (res.ok) return true;
     } catch (e) { console.warn("Backend unavailable, removing locally.", e); }
 
@@ -235,7 +318,10 @@ export const apiClient = {
     try {
       const params = new URLSearchParams({ fallback: 'False' });
       if (untilDate) params.append('until_date', untilDate);
-      const res = await fetch(`${API_URL}/api/admin/scrape?${params.toString()}`, { method: "POST" });
+      const res = await fetch(`${API_URL}/api/admin/scrape?${params.toString()}`, {
+        method: "POST",
+        headers: getAuthHeaders()
+      });
       if (res.ok) return await res.json();
     } catch (e) { console.warn("Backend unavailable, simulating crawl locally.", e); }
 

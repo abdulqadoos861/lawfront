@@ -87,7 +87,10 @@ export default function PublicFeed() {
               <p>Official Legislative Intelligence Portal</p>
             </div>
           </div>
-          <nav className="header-nav">
+          <nav className="header-nav" style={{ display: 'flex', alignItems: 'center', gap: '22px' }}>
+            <Link href="/about" className="nav-text-link">About Us</Link>
+            <Link href="/services" className="nav-text-link">Services</Link>
+            <Link href="/contact" className="nav-text-link">Contact Us</Link>
             <Link href="/admin" className="admin-portal-link">
               <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
@@ -373,6 +376,15 @@ export default function PublicFeed() {
         .logo-text p {
           font-size: 0.75rem; color: var(--accent-gold);
           font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+        }
+        .nav-text-link {
+          font-size: 0.9rem;
+          font-weight: 500;
+          color: var(--text-secondary);
+          transition: color var(--transition-fast);
+        }
+        .nav-text-link:hover {
+          color: var(--accent-gold);
         }
         .admin-portal-link {
           display: inline-flex; align-items: center; gap: 8px;
